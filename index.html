@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MHI PAPER — Laporan Harian Produksi Kertas ECG/EKG</title>
+<meta name="description" content="Sistem laporan harian produksi kertas ECG/EKG — Paper Pack, Paper Roll, kegiatan di luar jobdesk. Multi-user: Kepala Produksi, Admin, Operator.">
+<meta name="theme-color" content="#D6403C">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23D6403C'/%3E%3Cpolyline points='4 12 8 12 10 6 13 18 15 12 20 12' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-view="login">
+<noscript><p style="padding:90px 20px;text-align:center">Aplikasi ini membutuhkan JavaScript.</p></noscript>
+
+<!-- ================= LOGIN ================= -->
+<div id="loginScreen">
+  <div class="lg-monitor">
+    <div class="mon-grid"></div>
+    <div class="mon-inner">
+      <div class="mon-brand">
+        <span class="brand-mark lg"><span data-ic="activity" data-sz="24"></span></span>
+        <div><b>MHI PAPER</b><small>PRODUKSI KERTAS ECG / EKG &amp; PLAIN</small></div>
+      </div>
+      <h1 class="mon-title">LAPORAN<br>HARIAN <em>PRODUKSI</em></h1>
+      <p class="mon-sub">Satu rekaman shift untuk seluruh divisi konversi. Operator mengisi, admin memverifikasi, kepala produksi memegang kendali penuh.</p>
+      <svg class="mon-ecg" viewBox="0 0 1200 120" preserveAspectRatio="none" aria-hidden="true">
+        <path id="ecgLoginBase" class="base" d="M0 60 L1200 60"/>
+        <path id="ecgLoginRun" class="run" pathLength="1000" d="M0 60 L1200 60"/>
+      </svg>
+      <div class="mon-stats" id="monStats"></div>
+      <div class="mon-feed">
+        <div class="mf-head"><i class="dot"></i> AKTIVITAS TERAKHIR</div>
+        <div id="monTicker"></div>
+      </div>
+      <div class="mon-foot">
+        <span class="mode-chip" id="lgMode">MODE LOKAL</span>
+        <span class="mono sm">FORM LH-ECG-01 · REV. 03</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="lg-panel">
+    <div class="lg-card">
+      <div class="lg-head">
+        <span class="step">01</span>
+        <div><h2>Masuk ke Sistem</h2><p>Gunakan akun yang diberikan kepala produksi.</p></div>
+      </div>
+      <form id="loginForm" novalidate autocomplete="off">
+        <div class="field">
+          <label for="lgKode">Akun Pengguna <b class="req">*</b></label>
+          <select id="lgKode" class="inp"></select>
+        </div>
+        <div class="field">
+          <label for="lgPass">Kata Sandi <b class="req">*</b></label>
+          <div class="pass-wrap">
+            <input type="password" id="lgPass" class="inp" placeholder="••••••••" autocomplete="current-password">
+            <button type="button" class="pass-eye" id="lgEye" aria-label="Tampilkan kata sandi"><span data-ic="eye" data-sz="16"></span></button>
+          </div>
+        </div>
+        <div class="lg-err" id="lgErr" hidden></div>
+        <button type="submit" class="btn btn-primary btn-block" id="lgSubmit">Masuk <span data-ic="arrowRight" data-sz="15"></span></button>
+      </form>
+      <div class="lg-quick" id="lgQuick">
+        <div class="lgq-title">MASUK CEPAT · DEMO</div>
+        <div class="lgq-row">
+          <button class="lgq b-red" data-act="quick-login" data-kode="kepala"><span data-ic="users" data-sz="14"></span> Kepala Produksi</button>
+          <button class="lgq b-blue" data-act="quick-login" data-kode="admin"><span data-ic="checkCircle" data-sz="14"></span> Admin</button>
+          <button class="lgq b-green" data-act="quick-login" data-kode="yanto"><span data-ic="package" data-sz="14"></span> Operator</button>
+        </div>
+        <p class="lgq-note">Mode lokal menyimpan data di perangkat ini saja. Hubungkan Supabase agar 8 operator, admin, dan kepala produksi memakai data yang sama.</p>
+      </div>
+      <button class="lg-link" data-act="open-setup"><span data-ic="building" data-sz="14"></span> Koneksi Cloud Supabase</button>
+      <p class="lg-foot">Design By Rajiv</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= TOPBAR ================= -->
+<header class="topbar" id="topbar" hidden>
+  <div class="wrap topbar-in">
+    <div class="brand">
+      <span class="brand-mark"><span data-ic="activity" data-sz="20"></span></span>
+      <div class="brand-t"><b>MHI PAPER</b><small>Produksi Kertas ECG/EKG</small></div>
+    </div>
+    <nav class="tabs" id="mainTabs" aria-label="Navigasi utama"></nav>
+    <div class="top-right">
+      <button class="sync-chip" id="syncChip" data-act="open-setup" title="Status koneksi data"><i class="dot"></i><span class="mono" id="syncLbl">LOKAL</span></button>
+      <div class="clock" id="clock" aria-hidden="true"></div>
+      <button class="sound-btn" id="soundBtn" data-act="sound" aria-pressed="true" title="Aktif / matikan bunyi efek"><span id="soundIc"></span><span class="mono" id="soundLbl">BUNYI ON</span></button>
+      <div class="user-wrap">
+        <button class="user-btn" id="userBtn" data-act="user-menu" aria-haspopup="true" aria-expanded="false">
+          <span class="avatar sm" id="umAvatar">??</span>
+          <span class="ub-t"><b id="umName">—</b><small id="umRole">—</small></span>
+          <span data-ic="chevDown" data-sz="14"></span>
+        </button>
+        <div class="user-menu" id="userMenu" hidden>
+          <div class="ume-head"><b id="umeName">—</b><small id="umeMeta">—</small></div>
+          <button class="ume-item" data-act="nav" data-nav="history"><span data-ic="barChart" data-sz="15"></span> Riwayat &amp; Rekap</button>
+          <button class="ume-item" data-act="open-setup"><span data-ic="building" data-sz="15"></span> Koneksi Data</button>
+          <button class="ume-item danger" data-act="logout"><span data-ic="x" data-sz="15"></span> Keluar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="appMain" hidden>
+
+<!-- ================= VIEW: FORM ================= -->
+<section id="view-form" class="view" aria-label="Identitas laporan">
+  <div class="hero">
+    <div class="hero-top"><span>FORM LH-ECG-01 · REV. 03</span><span class="live"><i class="dot"></i><span id="shiftLive">SHIFT BERJALAN</span></span></div>
+    <h1 class="hero-title">Laporan Harian <em>Produksi</em></h1>
+    <svg class="ecg" viewBox="0 0 1200 64" preserveAspectRatio="none" aria-hidden="true"><path id="ecgBaseF" class="base" d="M0 32 L1200 32"/><path id="ecgRunF" class="run" pathLength="1000" d="M0 32 L1200 32"/></svg>
+  </div>
+  <div class="wizard" data-step="1">
+    <button type="button" class="wizard-step active" data-act="wizard" data-view="form"><span class="wizard-num">1</span><span><b>Identitas</b><small>Operator &amp; jenis kegiatan</small></span></button>
+    <div class="wizard-line"></div>
+    <button type="button" class="wizard-step" data-act="wizard" data-view="detail"><span class="wizard-num">2</span><span><b>Detail Produksi</b><small>Item, waktu &amp; hasil</small></span></button>
+  </div>
+  <div class="edit-banner" id="editBanner" hidden>
+    <span data-ic="pencil" data-sz="15"></span>
+    <span><b>MODE EDIT</b> — mengubah laporan <b id="editCode"></b>.</span>
+    <button type="button" class="btn btn-ghost btn-sm" data-act="cancel-edit">Batal Edit</button>
+  </div>
+  <div class="form-layout">
+    <form id="reportForm" class="form-main" novalidate autocomplete="off">
+      <section class="card sect">
+        <header class="card-head"><span class="step">01</span><div><h2>Identitas Laporan</h2><p>Pilih operator — nama &amp; jabatan terisi otomatis.</p></div></header>
+        <div class="card-body">
+          <div class="g-2">
+            <div class="field"><label for="f-operator">Nama Operator <b class="req">*</b></label><select id="f-operator" class="inp"></select><div class="err"></div></div>
+            <div class="field"><label for="f-date">Tanggal <b class="req">*</b></label><input type="date" id="f-date" class="inp"><div class="err"></div></div>
+          </div>
+          <div class="op-preview" id="opPreviewF"></div>
+          <div class="g-2">
+            <div class="field">
+              <label for="f-shift">Shift Kerja</label>
+              <select id="f-shift" class="inp"><option value="N1">Shift 1 · 08.00–17.00</option><option value="LONG">2 Shift Long Shift</option></select>
+              <div class="shift-sub" id="f-shift-sub" hidden>
+                <span class="help">Sistem 2 shift — pilih shift yang dijalankan:</span>
+                <div class="seg seg-shift" id="f-longseg" role="group">
+                  <button type="button" data-act="long-shift" data-val="L1">Shift 1 · 08.00–20.00</button>
+                  <button type="button" data-act="long-shift" data-val="L2">Shift 2 · 20.00–08.00</button>
+                </div>
+              </div>
+            </div>
+            <div class="field"><label>Kode Laporan</label><input class="inp num" value="Dibuat otomatis oleh sistem" disabled style="background:var(--surface-2);color:var(--ink-3)"></div>
+          </div>
+          <div class="field">
+            <label>Jenis Kegiatan <b class="req">*</b></label>
+            <div class="jenis-grid" role="radiogroup">
+              <button type="button" class="jenis-card j-pack active" data-act="jenis" data-jenis="pack" role="radio" aria-checked="true">
+                <span class="j-icon"><span data-ic="package" data-sz="20"></span></span>
+                <div><b>Produksi Paper Pack</b><small>Kertas ECG lipat dalam kemasan pack siap pakai.</small></div>
+                <span class="j-check"><span data-ic="check" data-sz="12"></span></span>
+              </button>
+              <button type="button" class="jenis-card j-roll" data-act="jenis" data-jenis="roll" role="radio" aria-checked="false">
+                <span class="j-icon"><span data-ic="roll" data-sz="20"></span></span>
+                <div><b>Produksi Paper Roll</b><small>Kertas ECG gulung untuk monitor &amp; thermal printer.</small></div>
+                <span class="j-check"><span data-ic="check" data-sz="12"></span></span>
+              </button>
+              <button type="button" class="jenis-card j-lainnya" data-act="jenis" data-jenis="lainnya" role="radio" aria-checked="false">
+                <span class="j-icon"><span data-ic="users" data-sz="20"></span></span>
+                <div><b>Kegiatan Lainnya</b><small>Agenda di luar jobdesk — bantu teknisi, operator, lintas divisi.</small><span class="j-go">→ Halaman terpisah</span></div>
+                <span class="j-check"><span data-ic="check" data-sz="12"></span></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="wizard-nav">
+        <span class="hint">Langkah 1 dari 2 — isi Identitas dulu, lalu Detail Produksi.</span>
+        <button type="button" class="btn btn-primary" data-act="go-detail">Lanjut ke Detail Produksi <span data-ic="arrowRight" data-sz="15"></span></button>
+      </div>
+    </form>
+    <aside class="form-aside">
+      <div class="card summary-card">
+        <div class="sum-head">LANGKAH 1 DARI 2 · IDENTITAS</div>
+        <div class="sum-op"><b>Lengkapi Identitas</b><small>Operator, tanggal, shift &amp; jenis kegiatan.</small></div>
+        <div class="sum-meta"><span class="mono sm">Setelah lengkap, lanjut ke Detail Produksi.</span></div>
+        <button class="btn btn-primary btn-block" type="button" data-act="go-detail">Lanjut ke Detail Produksi <span data-ic="arrowRight" data-sz="15"></span></button>
+        <div class="sum-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-act="reset-form"><span data-ic="rotate" data-sz="13"></span> Reset</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="nav" data-nav="history"><span data-ic="barChart" data-sz="13"></span> Riwayat</button>
+        </div>
+        <p class="sum-note"><span data-ic="info" data-sz="13"></span><span>Laporan yang dikirim berstatus <b>Menunggu Verifikasi</b> sampai admin memeriksanya.</span></p>
+      </div>
+    </aside>
+  </div>
+  <div class="mobile-bar" id="mobileBarF"><div class="mb-sum" id="mbSumF"></div><button class="btn btn-primary" type="button" data-act="go-detail">Lanjut <span data-ic="arrowRight" data-sz="14"></span></button></div>
+</section>
+
+<!-- ================= VIEW: DETAIL ================= -->
+<section id="view-detail" class="view" aria-label="Detail produksi">
+  <div class="hero">
+    <div class="hero-top"><span>FORM LH-ECG-01 · DETAIL PRODUKSI</span><span class="live"><i class="dot"></i>LANGKAH 2</span></div>
+    <h1 class="hero-title">Detail <em>Produksi</em></h1>
+    <p class="hero-sub">Isi setiap item yang diproduksi pada shift ini. Waktu dalam menit, hasil &amp; reject dalam pack / roll.</p>
+    <svg class="ecg" viewBox="0 0 1200 64" preserveAspectRatio="none" aria-hidden="true"><path id="ecgBaseD" class="base" d="M0 32 L1200 32"/><path id="ecgRunD" class="run" pathLength="1000" d="M0 32 L1200 32"/></svg>
+  </div>
+  <div class="wizard" data-step="2">
+    <button type="button" class="wizard-step done" data-act="wizard" data-view="form"><span class="wizard-num">✓</span><span><b>Identitas</b><small>Operator &amp; jenis kegiatan</small></span></button>
+    <div class="wizard-line"></div>
+    <button type="button" class="wizard-step active" data-act="wizard" data-view="detail"><span class="wizard-num">2</span><span><b>Detail Produksi</b><small>Item, waktu &amp; hasil</small></span></button>
+  </div>
+  <div class="edit-banner" id="editBannerD" hidden><span data-ic="pencil" data-sz="15"></span><span><b>MODE EDIT</b> — mengubah laporan <b id="editCodeD"></b>.</span><button type="button" class="btn btn-ghost btn-sm" data-act="cancel-edit">Batal Edit</button></div>
+  <div class="form-layout">
+    <form id="detailForm" class="form-main" novalidate autocomplete="off">
+      <section class="card sect">
+        <header class="card-head"><span class="step">02</span><div><h2 id="itemsTitle">Detail Produksi — Paper Pack</h2><p id="itemsSub">Isi data setiap item yang diproduksi.</p></div><span class="unit-tag" id="unitTag">SATUAN: PACK</span></header>
+        <div class="card-body">
+          <div class="multi-row">
+            <div><b>Apakah mengerjakan lebih dari 1 jenis item?</b><small>Pilih “Ya” untuk menambah item produksi lain dalam shift yang sama.</small></div>
+            <div class="seg" id="multiSeg" role="group"><button type="button" data-act="multi" data-val="tidak" class="active">Tidak</button><button type="button" data-act="multi" data-val="ya">Ya</button></div>
+          </div>
+          <div id="itemList" class="item-list"></div>
+          <button type="button" class="btn add-btn" id="addItemBtn" data-act="item-add" hidden><span data-ic="plus" data-sz="15"></span> Tambah Item Produksi</button>
+        </div>
+      </section>
+      <section class="card sect">
+        <header class="card-head"><span class="step" style="background:var(--plum)">03</span><div><h2>Kegiatan Lainnya</h2><p>Pekerjaan di luar produksi pada shift yang sama.</p></div><span class="unit-tag" style="color:#5E379C;background:var(--plum-soft);border-color:#D9C6F0">OPSIONAL</span></header>
+        <div class="card-body">
+          <div class="card question-card" style="box-shadow:none;margin-bottom:14px">
+            <div><b>Apakah ada kegiatan lainnya?</b><small>Contoh: membantu teknisi, membantu sesama operator, bersih-bersih area.</small></div>
+            <div class="seg" id="extraSeg" role="group"><button type="button" data-act="has-extra" data-val="tidak" class="active">Tidak</button><button type="button" data-act="has-extra" data-val="ya">Ya</button></div>
+          </div>
+          <div class="d-note" id="extraNote" style="margin-bottom:14px"><span data-ic="info" data-sz="15"></span><span>Tidak ada kegiatan lainnya. Laporan hanya berisi Detail Produksi.</span></div>
+          <div id="extraList" class="item-list"></div>
+          <button type="button" class="btn add-btn" id="addExtraBtn" data-act="extra-add" hidden><span data-ic="plus" data-sz="15"></span> Tambah Kegiatan Lainnya</button>
+        </div>
+      </section>
+      <div class="wizard-nav">
+        <button type="button" class="btn btn-ghost" data-act="back-to-identitas"><span data-ic="arrowLeft" data-sz="15"></span> Kembali ke Identitas</button>
+        <button type="submit" class="btn btn-primary" id="saveBtnDInline">Simpan Laporan</button>
+      </div>
+    </form>
+    <aside class="form-aside">
+      <div class="card summary-card">
+        <div class="sum-head">RINGKASAN LAPORAN · LIVE</div>
+        <div class="sum-op" id="sumOp"></div>
+        <div class="sum-meta" id="sumMeta"></div>
+        <div class="sum-nums">
+          <div><label>HASIL PRODUKSI</label><div class="sum-num" id="sumHasil">0</div><small id="sumHasilUnit">pack</small></div>
+          <div><label>REJECT</label><div class="sum-num amber" id="sumReject">0</div><small id="sumRate">rate 0%</small></div>
+        </div>
+        <div class="sum-time"><label>TOTAL WAKTU</label><div class="sum-num" id="sumWaktu">0 mnt</div></div>
+        <div class="bd-bar" id="bdBar"></div>
+        <div class="bd-legend" id="bdLegend"></div>
+        <div class="sum-items" id="sumItems"></div>
+        <div style="border-top:1px dashed var(--line-strong);padding-top:11px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><label style="font:600 9px var(--font-mono);letter-spacing:.1em;color:var(--ink-3)">KEGIATAN LAINNYA</label><span class="mono sm" id="sumExtraCount">0 kegiatan · 0 mnt</span></div>
+          <div class="sum-items" id="sumExtraList" style="border-top:none;padding-top:6px;margin:0"></div>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" form="detailForm" id="saveBtnD">Simpan Laporan</button>
+        <div class="sum-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-act="back-to-identitas"><span data-ic="arrowLeft" data-sz="13"></span> Identitas</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="reset-form"><span data-ic="rotate" data-sz="13"></span> Reset</button>
+        </div>
+        <p class="sum-note"><span data-ic="info" data-sz="13"></span><span>Setelah disimpan, laporan masuk antrean verifikasi admin.</span></p>
+      </div>
+    </aside>
+  </div>
+  <div class="mobile-bar" id="mobileBarD"><div class="mb-sum" id="mbSumD"></div><button class="btn btn-primary" type="submit" form="detailForm" id="saveBtnDM">Simpan</button></div>
+</section>
+
+<datalist id="dl-pack"></datalist>
+<datalist id="dl-roll"></datalist>
+
+<!-- ================= VIEW: OTHER ================= -->
+<section id="view-other" class="view" aria-label="Kegiatan lainnya">
+  <div class="hero hero-plum">
+    <button type="button" class="btn btn-ghost btn-sm" data-act="back-to-form" style="margin-bottom:14px"><span data-ic="arrowLeft" data-sz="14"></span> Kembali ke Laporan Produksi</button>
+    <div class="hero-top"><span>FORM LH-ECG-02 · DI LUAR JOBDESK</span><span class="live"><i class="dot"></i>HALAMAN TERPISAH</span></div>
+    <h1 class="hero-title">Kegiatan <em>Lainnya</em></h1>
+    <p class="hero-sub">Diisi apabila menjalankan agenda <b>di luar jobdesk</b> — membantu teknisi, sesama operator, atau pekerjaan lintas divisi.</p>
+    <div class="ex-chips">
+      <span class="ex-chip"><span data-ic="wrench" data-sz="13"></span> Membantu Teknisi</span>
+      <span class="ex-chip"><span data-ic="users" data-sz="13"></span> Membantu Sesama Operator</span>
+      <span class="ex-chip"><span data-ic="building" data-sz="13"></span> Lintas Divisi</span>
+    </div>
+    <svg class="ecg" viewBox="0 0 1200 64" preserveAspectRatio="none" aria-hidden="true"><path id="ecgBaseO" class="base" d="M0 32 L1200 32"/><path id="ecgRunO" class="run" pathLength="1000" d="M0 32 L1200 32"/></svg>
+  </div>
+  <div class="edit-banner" id="editBannerO" hidden><span data-ic="pencil" data-sz="15"></span><span><b>MODE EDIT</b> — mengubah laporan <b id="editCodeO"></b>.</span><button type="button" class="btn btn-ghost btn-sm" data-act="cancel-edit">Batal Edit</button></div>
+  <div class="form-layout">
+    <form id="otherForm" class="form-main" novalidate autocomplete="off">
+      <section class="card sect">
+        <header class="card-head"><span class="step" style="background:var(--plum)">01</span><div><h2>Identitas</h2><p>Nama &amp; jabatan terisi otomatis.</p></div></header>
+        <div class="card-body">
+          <div class="g-2">
+            <div class="field"><label for="o-operator">Nama Operator <b class="req">*</b></label><select id="o-operator" class="inp"></select><div class="err"></div></div>
+            <div class="field"><label for="o-date">Tanggal <b class="req">*</b></label><input type="date" id="o-date" class="inp"><div class="err"></div></div>
+          </div>
+          <div class="op-preview" id="opPreviewO"></div>
+          <div class="g-2">
+            <div class="field">
+              <label for="o-shift">Shift Kerja</label>
+              <select id="o-shift" class="inp"><option value="N1">Shift 1 · 08.00–17.00</option><option value="LONG">2 Shift Long Shift</option></select>
+              <div class="shift-sub" id="o-shift-sub" hidden>
+                <span class="help">Sistem 2 shift — pilih shift yang dijalankan:</span>
+                <div class="seg seg-shift" id="o-longseg" role="group"><button type="button" data-act="long-shift" data-val="L1">Shift 1 · 08.00–20.00</button><button type="button" data-act="long-shift" data-val="L2">Shift 2 · 20.00–08.00</button></div>
+              </div>
+            </div>
+            <div class="field"><label>Jenis Kegiatan</label><input class="inp" value="Kegiatan Lainnya (di luar jobdesk)" disabled style="background:var(--plum-soft);color:#5E379C;font-weight:600"></div>
+          </div>
+        </div>
+      </section>
+      <section class="card sect">
+        <header class="card-head"><span class="step" style="background:var(--plum)">02</span><div><h2>Agenda Di Luar Jobdesk</h2><p>Jawab pertanyaan berikut, lalu rincikan kegiatan bila ada.</p></div></header>
+        <div class="card-body">
+          <div class="card question-card" style="box-shadow:none;margin-bottom:15px">
+            <div><b>Apakah memiliki agenda di luar jobdesk?</b><small>Contoh: membantu teknisi, sesama operator, pekerjaan lintas divisi.</small></div>
+            <div class="seg" id="agendaSeg" role="group"><button type="button" data-act="has-agenda" data-val="tidak">Tidak</button><button type="button" data-act="has-agenda" data-val="ya" class="active">Ya</button></div>
+          </div>
+          <div class="d-note" id="agendaNote" hidden style="margin-bottom:14px"><span data-ic="info" data-sz="15"></span><span>Tidak ada agenda di luar jobdesk. Laporan tetap disimpan sebagai catatan <b>tanpa rincian agenda</b>.</span></div>
+          <div id="agendaList" class="item-list"></div>
+          <button type="button" class="btn add-btn" id="addAgendaBtn" data-act="agenda-add"><span data-ic="plus" data-sz="15"></span> Tambah Agenda Kegiatan</button>
+        </div>
+      </section>
+    </form>
+    <aside class="form-aside">
+      <div class="card summary-card">
+        <div class="sum-head">RINGKASAN KEGIATAN · LIVE</div>
+        <div class="sum-op" id="sumOpO"></div>
+        <div class="sum-meta" id="sumMetaO"></div>
+        <div class="sum-nums">
+          <div><label>JUMLAH AGENDA</label><div class="sum-num" id="sumAgendaCount">0</div><small>kegiatan</small></div>
+          <div><label>TOTAL WAKTU</label><div class="sum-num" id="sumWaktuO" style="font-size:19px">0 mnt</div><small>di luar jobdesk</small></div>
+        </div>
+        <div class="sum-items" id="sumAgendaList"></div>
+        <button class="btn btn-plum btn-block" type="submit" form="otherForm" id="saveBtnO">Simpan Laporan Kegiatan</button>
+        <div class="sum-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-act="back-to-form"><span data-ic="arrowLeft" data-sz="13"></span> Kembali</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="nav" data-nav="history"><span data-ic="barChart" data-sz="13"></span> Riwayat</button>
+        </div>
+        <p class="sum-note"><span data-ic="info" data-sz="13"></span><span>Waktu di luar jobdesk dihitung terpisah dari waktu produksi.</span></p>
+      </div>
+    </aside>
+  </div>
+  <div class="mobile-bar" id="mobileBarO"><div class="mb-sum" id="mbSumO"></div><button class="btn btn-plum" type="submit" form="otherForm" id="saveBtnOM">Simpan</button></div>
+</section>
+
+<!-- ================= VIEW: HISTORY ================= -->
+<section id="view-history" class="view" aria-label="Riwayat dan rekap">
+  <div class="hero hero-small">
+    <div class="hero-top"><span id="histScope">REKAP &amp; ARSIP · DIVISI KONVERSI</span><span id="histCount"></span></div>
+    <h1 class="hero-title">Riwayat <em>&amp; Rekap</em></h1>
+    <p class="hero-sub" id="histSub">Cari, filter, urutkan, edit, export CSV, dan cetak rekap bertanda tangan.</p>
+  </div>
+  <div class="stats-grid" id="statsGrid"></div>
+  <div class="charts-grid">
+    <div class="card chart-card">
+      <header class="ch-head"><span class="ch-title">PRODUKSI 7 HARI TERAKHIR</span><div class="legend"><span><i class="lg-pack"></i>Pack</span><span><i class="lg-roll"></i>Roll</span><span><i class="lg-rej"></i>Reject</span></div></header>
+      <div id="barChart"></div>
+    </div>
+    <div class="card chart-card">
+      <header class="ch-head"><span class="ch-title" id="opChartTitle">OPERATOR TERAKTIF · 7 HARI</span><span class="ch-title" style="letter-spacing:.04em">pack + roll</span></header>
+      <div id="opChart"></div>
+    </div>
+  </div>
+  <div class="card toolbar">
+    <div class="tb-row">
+      <div class="search-wrap"><span data-ic="search" data-sz="15"></span><input id="fl-q" class="inp" type="search" placeholder="Cari produk, PO, SPK, operator, kode laporan…  ( / )" aria-label="Cari laporan"></div>
+      <select id="fl-operator" class="inp tb-sel" aria-label="Filter operator"></select>
+      <select id="fl-jenis" class="inp tb-sel" aria-label="Filter jenis"><option value="all">Semua Jenis</option><option value="pack">Paper Pack</option><option value="roll">Paper Roll</option><option value="lainnya">Kegiatan Lainnya</option></select>
+      <select id="fl-status" class="inp tb-sel" aria-label="Filter status"><option value="all">Semua Status</option><option value="submit">Menunggu Verifikasi</option><option value="revisi">Perlu Revisi</option><option value="verified">Terverifikasi</option></select>
+      <select id="fl-sort" class="inp tb-sel" aria-label="Urutkan">
+        <option value="dateDesc">Terbaru</option><option value="dateAsc">Terlama</option>
+        <option value="hasilDesc">Hasil terbanyak</option><option value="hasilAsc">Hasil tersedikit</option>
+        <option value="rejectDesc">Reject terbanyak</option><option value="rejectAsc">Reject tersedikit</option>
+        <option value="waktuDesc">Waktu terlama</option><option value="waktuAsc">Waktu tersingkat</option>
+        <option value="operatorAsc">Operator A–Z</option>
+      </select>
+    </div>
+    <div class="tb-row">
+      <div class="chips" id="periodChips">
+        <button class="chip active" data-act="period" data-period="all">Semua</button>
+        <button class="chip" data-act="period" data-period="today">Hari Ini</button>
+        <button class="chip" data-act="period" data-period="7">7 Hari</button>
+        <button class="chip" data-act="period" data-period="30">30 Hari</button>
+        <button class="chip chip-arch" data-act="toggle-arch" id="archChip" hidden><span data-ic="trash" data-sz="11"></span> Arsip</button>
+      </div>
+      <div class="chips" id="savedChips"></div>
+      <button class="chip" data-act="view-save"><span data-ic="bookmark" data-sz="11"></span> Simpan Tampilan</button>
+      <span class="tb-spacer"></span>
+      <button class="btn btn-ghost btn-sm" data-act="reload-data"><span data-ic="rotate" data-sz="14"></span> Muat Ulang</button>
+      <button class="btn btn-ghost btn-sm" data-act="export-csv"><span data-ic="download" data-sz="14"></span> Export CSV</button>
+      <button class="btn btn-ghost btn-sm" data-act="print-recap"><span data-ic="printer" data-sz="14"></span> Cetak Rekap</button>
+    </div>
+  </div>
+  <div class="bulk-bar" id="bulkBar" hidden></div>
+  <div class="card table-card">
+    <table class="tbl" id="histTable">
+      <caption class="sr-only">Riwayat laporan harian produksi</caption>
+      <thead><tr>
+        <th class="th-chk"><input type="checkbox" id="chkAll" aria-label="Pilih semua"></th>
+        <th data-act="sort-th" data-sort="date">Tanggal <span class="s-arr"></span></th>
+        <th>Operator</th><th>Jenis</th><th>Status</th><th>Ringkasan</th>
+        <th class="ta-r" data-act="sort-th" data-sort="hasil">Hasil <span class="s-arr"></span></th>
+        <th class="ta-r" data-act="sort-th" data-sort="reject">Reject <span class="s-arr"></span></th>
+        <th class="ta-r" data-act="sort-th" data-sort="waktu">Waktu <span class="s-arr"></span></th>
+        <th class="ta-r">Aksi</th>
+      </tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+    <div id="histCards" class="rcards"></div>
+    <div id="histEmpty" class="empty" hidden></div>
+  </div>
+  <p class="hist-foot" id="histFoot"></p>
+</section>
+
+<!-- ================= VIEW: VERIFY ================= -->
+<section id="view-verify" class="view" aria-label="Verifikasi laporan">
+  <div class="hero hero-small">
+    <div class="hero-top"><span>MEJA VERIFIKASI · ADMIN PRODUKSI</span><span class="live"><i class="dot"></i>ANTREAN AKTIF</span></div>
+    <h1 class="hero-title">Meja <em>Verifikasi</em></h1>
+    <p class="hero-sub">Periksa laporan yang dikirim operator. Terverifikasi berarti angka terkunci dan tidak dapat diubah lagi oleh operator.</p>
+  </div>
+  <div class="stats-grid" id="vStats"></div>
+  <div class="card toolbar">
+    <div class="tb-row">
+      <div class="chips" id="vTabs">
+        <button class="chip active" data-act="vtab" data-tab="submit">Menunggu <span class="cnt" id="cSubmit">0</span></button>
+        <button class="chip" data-act="vtab" data-tab="revisi">Perlu Revisi <span class="cnt" id="cRevisi">0</span></button>
+        <button class="chip" data-act="vtab" data-tab="verified">Terverifikasi <span class="cnt" id="cVerified">0</span></button>
+      </div>
+      <span class="tb-spacer"></span>
+      <button class="btn btn-ghost btn-sm" data-act="vsel-all"><span data-ic="check" data-sz="14"></span> Pilih Semua</button>
+      <button class="btn btn-primary btn-sm" data-act="vbulk-verify"><span data-ic="checkCircle" data-sz="14"></span> Verifikasi Terpilih</button>
+    </div>
+  </div>
+  <div class="bulk-bar" id="vBulk" hidden></div>
+  <div id="vQueue" class="v-grid"></div>
+  <div id="vEmpty" class="card empty" hidden></div>
+</section>
+
+<!-- ================= VIEW: MASTER ================= -->
+<section id="view-master" class="view" aria-label="Master produk dan sistem">
+  <div class="hero hero-small">
+    <div class="hero-top"><span>MASTER DATA · REFERENSI PRODUK</span><span id="masterCount"></span></div>
+    <h1 class="hero-title">Master <em>Produk</em></h1>
+    <p class="hero-sub">Daftar produk yang muncul sebagai saran saat operator mengisi nama item. Perubahan langsung berlaku untuk semua pengguna.</p>
+  </div>
+  <div class="master-grid">
+    <div class="card sect">
+      <header class="card-head"><span class="step" style="background:var(--red-deep)">P</span><div><h2>Paper Pack</h2><p>Kertas ECG lipat dalam kemasan pack.</p></div><span class="unit-tag">PACK</span></header>
+      <div class="card-body">
+        <form class="add-row" data-form="prod" data-jenis="pack"><input class="inp" placeholder="Nama produk pack baru…" aria-label="Nama produk pack"><button class="btn btn-primary btn-sm" type="submit"><span data-ic="plus" data-sz="14"></span> Tambah</button></form>
+        <div id="prodPackList" class="prod-list"></div>
+      </div>
+    </div>
+    <div class="card sect">
+      <header class="card-head"><span class="step" style="background:var(--blue)">R</span><div><h2>Paper Roll</h2><p>Kertas ECG gulung thermal.</p></div><span class="unit-tag" style="color:#1D539E;background:var(--blue-soft);border-color:#C6DAF4">ROLL</span></header>
+      <div class="card-body">
+        <form class="add-row" data-form="prod" data-jenis="roll"><input class="inp" placeholder="Nama produk roll baru…" aria-label="Nama produk roll"><button class="btn btn-primary btn-sm" type="submit"><span data-ic="plus" data-sz="14"></span> Tambah</button></form>
+        <div id="prodRollList" class="prod-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card sect" id="sysCard">
+    <header class="card-head"><span class="step" style="background:var(--ink-2)">S</span><div><h2>Sistem &amp; Data</h2><p>Status koneksi, cadangan data, dan pemeliharaan.</p></div></header>
+    <div class="card-body" id="sysPanel"></div>
+  </div>
+</section>
+
+<!-- ================= VIEW: USERS ================= -->
+<section id="view-users" class="view" aria-label="Manajemen pengguna">
+  <div class="hero hero-small">
+    <div class="hero-top"><span>MANAJEMEN PENGGUNA · AKSES KEPALA PRODUKSI</span><span id="usersCount"></span></div>
+    <h1 class="hero-title">Pengguna <em>&amp; Akses</em></h1>
+    <p class="hero-sub">Kelola akun operator, admin, dan kepala produksi. Menonaktifkan akun langsung mencabut seluruh aksesnya.</p>
+  </div>
+  <div class="stats-grid" id="usersStats"></div>
+  <div class="card toolbar">
+    <div class="tb-row">
+      <div class="chips" id="uTabs">
+        <button class="chip active" data-act="utab" data-tab="pengguna">Daftar Pengguna</button>
+        <button class="chip" data-act="utab" data-tab="audit">Audit Log</button>
+      </div>
+      <span class="tb-spacer"></span>
+      <button class="btn btn-primary btn-sm" data-act="user-add"><span data-ic="plus" data-sz="14"></span> Tambah Pengguna</button>
+    </div>
+  </div>
+  <div id="uPaneUsers" class="u-grid"></div>
+  <div id="uPaneAudit" class="card sect" hidden>
+    <header class="card-head"><span class="step" style="background:var(--ink-2)">A</span><div><h2>Audit Log</h2><p>Rekam jejak perubahan laporan — siapa, kapan, dan apa.</p></div></header>
+    <div class="card-body"><div id="auditBody" class="audit-list"></div></div>
+  </div>
+</section>
+
+<p class="app-foot">Design By Rajiv</p>
+</main>
+
+<!-- ================= DRAWER ================= -->
+<div id="scrim"></div>
+<aside id="drawer" role="dialog" aria-modal="true" aria-label="Detail laporan">
+  <header class="drawer-head">
+    <div><small>DETAIL LAPORAN</small><span class="mono" id="drawerCode">—</span></div>
+    <button class="icon-btn" data-act="drawer-close" aria-label="Tutup detail"><span data-ic="x" data-sz="18"></span></button>
+  </header>
+  <div class="drawer-body" id="drawerBody"></div>
+  <footer class="drawer-foot" id="drawerFoot"></footer>
+</aside>
+
+<!-- ================= TOASTS & MODALS ================= -->
+<div id="toasts" aria-live="polite"></div>
+
+<div class="modal-wrap" id="modalWrap">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle"></h3><p id="modalMsg"></p>
+    <div class="modal-input" id="modalInputWrap" hidden><label for="modalInput" id="modalInputLabel"></label><textarea id="modalInput" class="inp" rows="3" maxlength="300"></textarea></div>
+    <div class="modal-btns"><button class="btn btn-ghost" data-act="modal-cancel">Batal</button><button class="btn btn-danger" data-act="modal-ok" id="modalOk">OK</button></div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="setupWrap">
+  <div class="modal modal-wide" role="dialog" aria-modal="true">
+    <h3>Koneksi Cloud Supabase</h3>
+    <p>Isi URL proyek dan <b>anon public key</b> dari dashboard Supabase → Project Settings → API. Kunci ini aman ditaruh di frontend — yang menjaga data adalah Row Level Security di database.</p>
+    <div class="modal-input"><label for="suUrl">Project URL</label><input id="suUrl" class="inp mono" placeholder="https://xxxxxxxx.supabase.co"></div>
+    <div class="modal-input"><label for="suKey">Anon Public Key</label><textarea id="suKey" class="inp mono" rows="3" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."></textarea></div>
+    <div class="modal-input"><label for="suDomain">Domain email internal</label><input id="suDomain" class="inp mono" placeholder="mhi.local"></div>
+    <div class="setup-msg" id="suMsg" hidden></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" data-act="setup-local">Pakai Mode Lokal</button>
+      <button class="btn btn-ghost" data-act="setup-close">Tutup</button>
+      <button class="btn btn-primary" data-act="setup-save" id="suSave">Simpan &amp; Hubungkan</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-wrap" id="userWrap">
+  <div class="modal modal-wide" role="dialog" aria-modal="true">
+    <h3 id="userModalTitle">Tambah Pengguna</h3>
+    <p id="userModalSub">Akun baru langsung aktif dan dapat digunakan untuk masuk.</p>
+    <div class="g-2 modal-input">
+      <div><label for="uuKode">Kode Akun <b class="req">*</b></label><input id="uuKode" class="inp mono" placeholder="cth: ridwan" maxlength="24"></div>
+      <div><label for="uuNama">Nama Lengkap <b class="req">*</b></label><input id="uuNama" class="inp" placeholder="cth: Ridwan"></div>
+    </div>
+    <div class="g-2 modal-input">
+      <div><label for="uuRole">Hak Akses <b class="req">*</b></label><select id="uuRole" class="inp"><option value="operator">Operator</option><option value="admin">Admin Produksi</option><option value="kepala">Kepala Produksi</option></select></div>
+      <div><label for="uuMesin">Mesin / Area</label><input id="uuMesin" class="inp" placeholder="cth: Auto Paper"></div>
+    </div>
+    <div class="modal-input"><label for="uuJabatan">Jabatan / Posisi</label><input id="uuJabatan" class="inp" placeholder="cth: Operator Mesin Auto Paper"></div>
+    <div class="g-2 modal-input">
+      <div><label for="uuWarna">Warna Avatar</label><input id="uuWarna" type="color" class="inp inp-color" value="#D6403C"></div>
+      <div id="uuPassWrap"><label for="uuPass">Kata Sandi <b class="req">*</b></label><input id="uuPass" class="inp mono" placeholder="min. 6 karakter"></div>
+    </div>
+    <div class="setup-msg" id="uuMsg" hidden></div>
+    <div class="modal-btns"><button class="btn btn-ghost" data-act="user-cancel">Batal</button><button class="btn btn-primary" data-act="user-save" id="uuSave">Simpan Pengguna</button></div>
+  </div>
+</div>
+
+<div id="printArea"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

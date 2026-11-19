@@ -1,0 +1,12 @@
+{
+  "name": "mhi-paper",
+  "version": "3.0.0",
+  "private": true,
+  "description": "MHI PAPER — Laporan Harian Produksi Kertas ECG/EKG (multi-user, Supabase + Vercel)",
+  "scripts": {
+    "dev": "npx --yes serve public -l 5173",
+    "db:link": "supabase link --project-ref GANTI_PROJECT_REF",
+    "db:push": "supabase db push",
+    "fn:deploy": "supabase functions deploy manage-user"
+  }
+}
